@@ -61,7 +61,7 @@ public sealed class MainForm : Form
         var brand = new Label { Text = "THROWBACK\nLAUNCHER", Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = Color.White, AutoSize = true, Location = new Point(78, 56) };
         side.Controls.Add(mark); side.Controls.Add(brand);
 
-        var nav = new[] { ("⌂", "Home", (Action)ShowHome), ("▦", "Library", (Action)ShowLibrary), ("♕", "Leaderboard", (Action)ComingSoon), ("⚔", "Tournaments", (Action)ComingSoon), ("▣", "Shop", (Action)ComingSoon), ("⌁", "Appeals", (Action)ComingSoon), ("↧", "Updates", (Action)ComingSoon), ("⚙", "Settings", (Action)ComingSoon) };
+        var nav = new[] { ("⌂", "Home", (Action)ShowHome), ("▦", "Library", (Action)ShowLibrary), ("⚔", "Tournaments", (Action)ComingSoon), ("⌁", "Appeals", (Action)ComingSoon), ("⚙", "Settings", (Action)ComingSoon) };
         var y = 132;
         foreach (var (icon, text, action) in nav)
         {
@@ -69,7 +69,7 @@ public sealed class MainForm : Form
             b.FlatAppearance.BorderColor = text == "Home" ? Color.FromArgb(27, 127, 181) : Side;
             b.Click += (_, _) => action();
             side.Controls.Add(b);
-            y += text == "Updates" ? 68 : 44;
+            y += text == "Appeals" ? 68 : 44;
         }
         var account = new Panel { Height = 64, Dock = DockStyle.Bottom, BackColor = Color.FromArgb(18, 35, 56), Padding = new Padding(14, 10, 10, 10) };
         account.Controls.Add(new Label { Text = "PI", BackColor = Cyan, ForeColor = Color.White, Size = new Size(38, 38), TextAlign = ContentAlignment.MiddleCenter, Location = new Point(12, 12) });
