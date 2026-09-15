@@ -38,6 +38,12 @@ public sealed class MainForm : Form
         BackColor = Navy;
         ForeColor = Color.White;
         Font = new Font("Segoe UI", 9.5f);
+        try
+        {
+            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ThrowbackLauncher.icon.ico");
+            if (stream is not null) using (var loaded = new Icon(stream)) Icon = (Icon)loaded.Clone();
+        }
+        catch { }
         try { using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("ThrowbackLauncher.hero.png"); if (s is not null) heroImage = Image.FromStream(s); } catch { }
         try { using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("ThrowbackLauncher.logo.png"); if (s is not null) logoImage = Image.FromStream(s); } catch { }
         LoadState();
