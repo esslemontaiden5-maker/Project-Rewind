@@ -16,5 +16,6 @@
   <ItemGroup>
     <EmbeddedResource Include="Assets\hero.png" LogicalName="ThrowbackLauncher.hero.png" />
     <EmbeddedResource Include="Assets\throwback-logo.png" LogicalName="ThrowbackLauncher.logo.png" />
+    <EmbeddedResource Include="Assets\throwback.ico" LogicalName="ThrowbackLauncher.icon.ico" />
   </ItemGroup>
 </Project>
