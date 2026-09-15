@@ -1,4 +1,4 @@
-name: Build Windows Launcher
+name: Build Throwback Launcher
 
 on:
   push:
@@ -22,10 +22,10 @@ jobs:
         run: dotnet publish src/RewindLauncher/RewindLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o release
       - name: Create download archive
         shell: pwsh
-        run: Compress-Archive -Path release/RewindLauncher.exe -DestinationPath RewindLauncher-Windows-x64.zip
+        run: Compress-Archive -Path release/ThrowbackLauncher.exe -DestinationPath ThrowbackLauncher-Windows-x64.zip
       - name: Upload Windows launcher
         uses: actions/upload-artifact@v4
         with:
-          name: RewindLauncher-Windows-x64
-          path: RewindLauncher-Windows-x64.zip
+          name: ThrowbackLauncher-Windows-x64
+          path: ThrowbackLauncher-Windows-x64.zip
           if-no-files-found: error
