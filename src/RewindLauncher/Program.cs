@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
+using System.Reflection;
 using System.Text.Json;
 
 namespace RewindLauncher;
@@ -7,324 +8,261 @@ namespace RewindLauncher;
 internal static class Program
 {
     [STAThread]
-    static void Main()
-    {
-        ApplicationConfiguration.Initialize();
-        Application.Run(new MainForm());
-    }
+    static void Main() { ApplicationConfiguration.Initialize(); Application.Run(new MainForm()); }
 }
 
 public sealed class MainForm : Form
 {
-    private readonly Color Bg = Color.FromArgb(8, 5, 16);
-    private readonly Color Panel = Color.FromArgb(20, 13, 37);
-    private readonly Color Purple = Color.FromArgb(176, 92, 255);
-    private readonly string dataFile = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "RewindLauncher", "library.json");
-
-    private readonly FlowLayoutPanel cards = new() { AutoScroll = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true };
-    private readonly Button play = new();
-    private readonly Label count = new();
-    private LibraryState state = new();
+    static readonly Color Navy = Color.FromArgb(5, 14, 29);
+    static readonly Color Side = Color.FromArgb(12, 25, 45);
+    static readonly Color Card = Color.FromArgb(10, 24, 40);
+    static readonly Color Cyan = Color.FromArgb(21, 190, 255);
+    static readonly Color Muted = Color.FromArgb(146, 165, 190);
+    readonly string dataFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RewindLauncher", "library.json");
+    readonly Panel page = new() { Dock = DockStyle.Fill, BackColor = Navy };
+    readonly Button play = new();
+    readonly Label buildName = new();
+    readonly Label buildPath = new();
+    readonly Label status = new();
+    readonly FlowLayoutPanel library = new();
+    LibraryState state = new();
+    Image? heroImage;
 
     public MainForm()
     {
-        Text = "Rewind Launcher";
-        MinimumSize = new Size(980, 680);
-        Size = new Size(1180, 760);
+        Text = "Project Rewind";
+        Size = new Size(1260, 760);
+        MinimumSize = new Size(1040, 680);
         StartPosition = FormStartPosition.CenterScreen;
-        BackColor = Bg;
+        BackColor = Navy;
         ForeColor = Color.White;
-        Font = new Font("Segoe UI", 10);
-        BuildUi();
+        Font = new Font("Segoe UI", 9.5f);
+        try { using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("RewindLauncher.hero.png"); if (s is not null) heroImage = Image.FromStream(s); } catch { }
         LoadState();
-        RenderCards();
+        BuildShell();
+        ShowHome();
     }
 
-    private void BuildUi()
+    void BuildShell()
     {
-        var sidebar = new Panel { Dock = DockStyle.Left, Width = 220, BackColor = Color.FromArgb(12, 7, 24), Padding = new Padding(18) };
-        var logo = new Label { Text = "R", Font = new Font("Segoe UI", 22, FontStyle.Bold), ForeColor = Color.White, BackColor = Color.FromArgb(124, 58, 237), TextAlign = ContentAlignment.MiddleCenter, Size = new Size(48, 48), Location = new Point(18, 24) };
-        var brand = new Label { Text = "REWIND\nLAUNCHER", Font = new Font("Segoe UI", 13, FontStyle.Bold), ForeColor = Color.White, AutoSize = true, Location = new Point(78, 27) };
-        var nav = new Label { Text = "⌂   BUILD LIBRARY", ForeColor = Color.White, BackColor = Color.FromArgb(54, 32, 88), TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 10, FontStyle.Bold), Height = 48, Dock = DockStyle.Top, Padding = new Padding(12, 0, 0, 0), Margin = new Padding(0, 100, 0, 0) };
-        var disclaimer = new Label { Text = "LOCAL FILES ONLY\n\nIndependent fan-made launcher.\nNot affiliated with Epic Games.", ForeColor = Color.FromArgb(125, 110, 145), Dock = DockStyle.Bottom, Height = 105, Font = new Font("Segoe UI", 8.5f) };
-        sidebar.Controls.Add(disclaimer);
-        sidebar.Controls.Add(nav);
-        sidebar.Controls.Add(brand);
-        sidebar.Controls.Add(logo);
-        nav.Location = new Point(18, 110);
-        nav.Width = 184;
+        var side = new Panel { Dock = DockStyle.Left, Width = 252, BackColor = Side };
+        var mark = new Label { Text = "R", Font = new Font("Segoe UI", 22, FontStyle.Bold), ForeColor = Cyan, BackColor = Color.FromArgb(5, 15, 28), BorderStyle = BorderStyle.FixedSingle, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(46, 46), Location = new Point(19, 52) };
+        var brand = new Label { Text = "REWIND\nLAUNCHER", Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = Color.White, AutoSize = true, Location = new Point(78, 56) };
+        side.Controls.Add(mark); side.Controls.Add(brand);
 
-        var content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(30), BackColor = Bg };
-        var top = new Panel { Dock = DockStyle.Top, Height = 54 };
-        top.Controls.Add(new Label { Text = "●  SYSTEM READY", ForeColor = Color.FromArgb(80, 225, 160), AutoSize = true, Location = new Point(0, 15), Font = new Font("Segoe UI", 9, FontStyle.Bold) });
-        var importTop = MakeButton("＋  IMPORT BUILD", false);
-        importTop.Size = new Size(160, 40);
-        importTop.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        importTop.Location = new Point(top.Width - 160, 0);
-        top.Resize += (_, _) => importTop.Left = top.ClientSize.Width - importTop.Width;
-        importTop.Click += (_, _) => ImportBuild();
-        top.Controls.Add(importTop);
+        var nav = new[] { ("⌂", "Home", (Action)ShowHome), ("▦", "Library", (Action)ShowLibrary), ("♕", "Leaderboard", (Action)ComingSoon), ("⚔", "Tournaments", (Action)ComingSoon), ("▣", "Shop", (Action)ComingSoon), ("↧", "Updates", (Action)ComingSoon), ("⚙", "Settings", (Action)ComingSoon) };
+        var y = 132;
+        foreach (var (icon, text, action) in nav)
+        {
+            var b = new Button { Text = icon + "    " + text, TextAlign = ContentAlignment.MiddleLeft, FlatStyle = FlatStyle.Flat, ForeColor = text == "Home" ? Color.White : Color.FromArgb(176, 191, 213), BackColor = text == "Home" ? Color.FromArgb(24, 70, 106) : Side, Font = new Font("Segoe UI", 10, text == "Home" ? FontStyle.Bold : FontStyle.Regular), Size = new Size(230, 44), Location = new Point(10, y), Cursor = Cursors.Hand, Padding = new Padding(8, 0, 0, 0) };
+            b.FlatAppearance.BorderColor = text == "Home" ? Color.FromArgb(27, 127, 181) : Side;
+            b.Click += (_, _) => action();
+            side.Controls.Add(b);
+            y += text == "Updates" ? 68 : 44;
+        }
+        var account = new Panel { Height = 64, Dock = DockStyle.Bottom, BackColor = Color.FromArgb(18, 35, 56), Padding = new Padding(14, 10, 10, 10) };
+        account.Controls.Add(new Label { Text = "PI", BackColor = Cyan, ForeColor = Color.White, Size = new Size(38, 38), TextAlign = ContentAlignment.MiddleCenter, Location = new Point(12, 12) });
+        account.Controls.Add(new Label { Text = Environment.UserName + "\nLOCAL PLAYER", ForeColor = Color.White, AutoSize = true, Location = new Point(62, 14), Font = new Font("Segoe UI", 8.5f, FontStyle.Bold) });
+        side.Controls.Add(account);
 
-        var hero = new GradientPanel { Dock = DockStyle.Top, Height = 245, Padding = new Padding(34), Start = Color.FromArgb(18, 8, 36), End = Color.FromArgb(74, 28, 116) };
-        var eyebrow = new Label { Text = "LOCAL BUILD MANAGER", ForeColor = Purple, AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Bold), Location = new Point(34, 30) };
-        var title = new Label { Text = "DROP IN.\nREWIND TIME.", ForeColor = Color.White, AutoSize = true, Font = new Font("Segoe UI", 29, FontStyle.Bold), Location = new Point(30, 52) };
-        var sub = new Label { Text = "Import a locally owned build folder, select it, and launch the detected Windows client.", ForeColor = Color.FromArgb(206, 191, 222), AutoSize = true, Location = new Point(34, 138) };
-        play.Text = "▶  SELECT A BUILD";
-        StyleButton(play, true);
-        play.Enabled = false;
-        play.Location = new Point(34, 177);
-        play.Size = new Size(260, 45);
-        play.Click += (_, _) => LaunchSelected();
-        var importHero = MakeButton("＋  IMPORT BUILD", false);
-        importHero.Location = new Point(306, 177);
-        importHero.Size = new Size(165, 45);
-        importHero.Click += (_, _) => ImportBuild();
-        hero.Controls.AddRange([eyebrow, title, sub, play, importHero]);
+        var top = new Panel { Dock = DockStyle.Top, Height = 86, BackColor = Color.FromArgb(16, 42, 73) };
+        status.Text = "●  OFFLINE";
+        status.ForeColor = Color.FromArgb(255, 83, 101);
+        status.BackColor = Color.FromArgb(23, 51, 83);
+        status.BorderStyle = BorderStyle.FixedSingle;
+        status.AutoSize = true;
+        status.Padding = new Padding(10, 7, 10, 7);
+        status.Location = new Point(24, 25);
+        status.Font = new Font("Segoe UI", 8, FontStyle.Bold);
+        top.Controls.Add(status);
+        var user = new Label { Text = Environment.UserName.ToUpperInvariant() + "    ●", ForeColor = Color.White, AutoSize = true, Anchor = AnchorStyles.Top | AnchorStyles.Right, Location = new Point(820, 32), Font = new Font("Segoe UI", 9, FontStyle.Bold) };
+        top.Resize += (_, _) => user.Left = top.ClientSize.Width - user.Width - 28;
+        top.Controls.Add(user);
 
-        var section = new Panel { Dock = DockStyle.Top, Height = 72 };
-        section.Controls.Add(new Label { Text = "YOUR ARCHIVE", ForeColor = Purple, AutoSize = true, Location = new Point(0, 19), Font = new Font("Segoe UI", 8, FontStyle.Bold) });
-        section.Controls.Add(new Label { Text = "INSTALLED BUILDS", ForeColor = Color.White, AutoSize = true, Location = new Point(-2, 37), Font = new Font("Segoe UI", 17, FontStyle.Bold) });
-        count.ForeColor = Color.FromArgb(155, 140, 175);
-        count.AutoSize = true;
-        count.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        count.Location = new Point(section.Width - 80, 40);
-        section.Resize += (_, _) => count.Left = section.ClientSize.Width - count.Width;
-        section.Controls.Add(count);
-
-        cards.Dock = DockStyle.Fill;
-        cards.BackColor = Bg;
-        cards.Padding = new Padding(0, 3, 0, 0);
-
-        content.Controls.Add(cards);
-        content.Controls.Add(section);
-        content.Controls.Add(hero);
-        content.Controls.Add(top);
-        Controls.Add(content);
-        Controls.Add(sidebar);
+        Controls.Add(page);
+        Controls.Add(top);
+        Controls.Add(side);
     }
 
-    private Button MakeButton(string text, bool primary)
+    void ShowHome()
     {
-        var b = new Button { Text = text, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, ForeColor = Color.White, BackColor = primary ? Color.FromArgb(124, 58, 237) : Color.FromArgb(29, 18, 48), Font = new Font("Segoe UI", 9, FontStyle.Bold) };
-        b.FlatAppearance.BorderColor = primary ? Purple : Color.FromArgb(64, 44, 91);
-        return b;
+        page.Controls.Clear();
+        var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(32, 30, 32, 30), BackColor = Navy };
+        var hero = new HeroPanel(heroImage) { Height = 290, Dock = DockStyle.Top, Padding = new Padding(34) };
+        hero.Controls.Add(new Label { Text = "━  ACTIVE BUILD", ForeColor = Cyan, BackColor = Color.Transparent, AutoSize = true, Location = new Point(31, 98), Font = new Font("Segoe UI", 8, FontStyle.Bold) });
+        buildName.ForeColor = Color.White; buildName.BackColor = Color.Transparent; buildName.AutoSize = true; buildName.Location = new Point(31, 124); buildName.Font = new Font("Segoe UI", 24, FontStyle.Bold);
+        buildPath.ForeColor = Color.FromArgb(184, 198, 216); buildPath.BackColor = Color.Transparent; buildPath.AutoEllipsis = true; buildPath.Size = new Size(610, 22); buildPath.Location = new Point(34, 165); buildPath.Font = new Font("Consolas", 8.5f);
+        hero.Controls.Add(buildName); hero.Controls.Add(buildPath);
+        StyleButton(play, true); play.Size = new Size(150, 50); play.Location = new Point(34, 200); play.Click -= PlayClick; play.Click += PlayClick;
+        var lib = MakeButton("LIBRARY", false); lib.Size = new Size(114, 50); lib.Location = new Point(196, 200); lib.Click += (_, _) => ShowLibrary();
+        hero.Controls.Add(play); hero.Controls.Add(lib);
+
+        var profile = new Panel { Size = new Size(235, 112), Anchor = AnchorStyles.Top | AnchorStyles.Right, BackColor = Color.FromArgb(22, 20, 37), Location = new Point(680, 142) };
+        profile.Controls.Add(new Label { Text = "●  OFFLINE", ForeColor = Color.FromArgb(255, 83, 101), AutoSize = true, Location = new Point(18, 18), Font = new Font("Segoe UI", 8, FontStyle.Bold) });
+        profile.Controls.Add(new Label { Text = "SIGNED IN\n" + Environment.UserName.ToUpperInvariant(), ForeColor = Color.White, AutoSize = true, Location = new Point(18, 54), Font = new Font("Segoe UI", 8.5f, FontStyle.Bold) });
+        hero.Resize += (_, _) => profile.Left = hero.ClientSize.Width - profile.Width - 34;
+        hero.Controls.Add(profile);
+
+        var newsTitle = new Label { Text = "━  LATEST NEWS", Dock = DockStyle.Top, Height = 52, Padding = new Padding(0, 21, 0, 0), ForeColor = Cyan, Font = new Font("Segoe UI", 8, FontStyle.Bold) };
+        var newsRow = new Panel { Dock = DockStyle.Top, Height = 235 };
+        var newsImage = new PictureBox { Dock = DockStyle.Left, Width = 610, Image = heroImage, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Card };
+        var newsCards = new Panel { Dock = DockStyle.Fill, Padding = new Padding(18, 0, 0, 0) };
+        var welcome = NewsCard("01", "WELCOME TO REWIND", "Your local build library is ready.", true);
+        welcome.Dock = DockStyle.Top; welcome.Height = 105;
+        var update = NewsCard("02", "BUILD IMPORTS", "Select Engine + FortniteGame to begin.", false);
+        update.Dock = DockStyle.Bottom; update.Height = 105;
+        newsCards.Controls.Add(welcome); newsCards.Controls.Add(update);
+        newsRow.Controls.Add(newsCards); newsRow.Controls.Add(newsImage);
+
+        scroll.Controls.Add(newsRow);
+        scroll.Controls.Add(newsTitle);
+        scroll.Controls.Add(hero);
+        page.Controls.Add(scroll);
+        RenderSelection();
     }
 
-    private void StyleButton(Button b, bool primary)
+    Panel NewsCard(string number, string title, string text, bool active)
     {
-        b.FlatStyle = FlatStyle.Flat;
-        b.Cursor = Cursors.Hand;
-        b.ForeColor = Color.White;
-        b.BackColor = primary ? Color.FromArgb(124, 58, 237) : Panel;
-        b.Font = new Font("Segoe UI", 9, FontStyle.Bold);
-        b.FlatAppearance.BorderColor = primary ? Purple : Color.FromArgb(64, 44, 91);
+        var p = new Panel { BackColor = Card, Padding = new Padding(16) };
+        p.Paint += (_, e) => { using var pen = new Pen(active ? Cyan : Color.FromArgb(43, 61, 82), active ? 2 : 1); e.Graphics.DrawRectangle(pen, 0, 0, p.Width - 1, p.Height - 1); };
+        p.Controls.Add(new Label { Text = number, ForeColor = active ? Cyan : Color.FromArgb(96, 113, 135), AutoSize = true, Location = new Point(15, 18), Font = new Font("Segoe UI", 11, FontStyle.Bold | FontStyle.Italic) });
+        p.Controls.Add(new Label { Text = title + "\n" + text, ForeColor = Color.White, AutoSize = true, Location = new Point(53, 17), Font = new Font("Segoe UI", 8.5f, FontStyle.Bold) });
+        return p;
     }
 
-    private void ImportBuild()
+    void ShowLibrary()
+    {
+        page.Controls.Clear();
+        var wrap = new Panel { Dock = DockStyle.Fill, Padding = new Padding(32), BackColor = Navy };
+        var header = new Panel { Dock = DockStyle.Top, Height = 75 };
+        header.Controls.Add(new Label { Text = "BUILD LIBRARY", ForeColor = Color.White, AutoSize = true, Location = new Point(0, 6), Font = new Font("Segoe UI", 22, FontStyle.Bold) });
+        header.Controls.Add(new Label { Text = "Import and manage locally owned game builds.", ForeColor = Muted, AutoSize = true, Location = new Point(2, 45) });
+        var import = MakeButton("＋ IMPORT BUILD", true); import.Size = new Size(160, 42); import.Anchor = AnchorStyles.Top | AnchorStyles.Right; import.Location = new Point(760, 10); import.Click += (_, _) => ImportBuild();
+        header.Resize += (_, _) => import.Left = header.ClientSize.Width - import.Width;
+        header.Controls.Add(import);
+        library.Dock = DockStyle.Fill; library.AutoScroll = true; library.WrapContents = true; library.BackColor = Navy;
+        wrap.Controls.Add(library); wrap.Controls.Add(header); page.Controls.Add(wrap);
+        RenderLibrary();
+    }
+
+    void RenderSelection()
+    {
+        var b = state.Builds.FirstOrDefault(x => x.Id == state.SelectedId);
+        buildName.Text = b?.Name.ToUpperInvariant() ?? "NO BUILD SELECTED";
+        buildPath.Text = b?.Root ?? "Open Library and import a build folder";
+        play.Enabled = b is not null;
+        play.Text = b is null ? "▶  SELECT" : "▶  PLAY";
+    }
+
+    void RenderLibrary()
+    {
+        library.Controls.Clear();
+        foreach (var b in state.Builds)
+        {
+            var selected = b.Id == state.SelectedId;
+            var card = new Panel { Width = 285, Height = 155, BackColor = selected ? Color.FromArgb(19, 51, 75) : Card, Margin = new Padding(0, 0, 14, 14), Cursor = Cursors.Hand };
+            card.Paint += (_, e) => { using var pen = new Pen(selected ? Cyan : Color.FromArgb(39, 59, 81), selected ? 2 : 1); e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1); };
+            var badge = new Label { Text = "●  LOCAL BUILD", ForeColor = Color.FromArgb(68, 229, 156), AutoSize = true, Location = new Point(17, 18), Font = new Font("Segoe UI", 8, FontStyle.Bold) };
+            var name = new Label { Text = b.Name, ForeColor = Color.White, AutoEllipsis = true, Size = new Size(250, 30), Location = new Point(16, 55), Font = new Font("Segoe UI", 14, FontStyle.Bold) };
+            var ver = new Label { Text = b.Version, ForeColor = Muted, AutoSize = true, Location = new Point(17, 88) };
+            var remove = MakeButton("REMOVE", false); remove.Size = new Size(78, 29); remove.Location = new Point(190, 112); remove.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold); remove.Click += (_, _) => RemoveBuild(b);
+            void choose(object? _, EventArgs __) { state.SelectedId = b.Id; SaveState(); RenderLibrary(); }
+            card.Click += choose; badge.Click += choose; name.Click += choose; ver.Click += choose;
+            card.Controls.AddRange([badge, name, ver, remove]); library.Controls.Add(card);
+        }
+        if (state.Builds.Count == 0) library.Controls.Add(new Label { Text = "No builds imported.\n\nClick IMPORT BUILD and choose the folder containing Engine and FortniteGame.", ForeColor = Muted, BorderStyle = BorderStyle.FixedSingle, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(640, 125) });
+    }
+
+    void ImportBuild()
     {
         using var folder = new FolderBrowserDialog { Description = "Select the folder containing Engine and FortniteGame", UseDescriptionForTitle = true };
         if (folder.ShowDialog(this) != DialogResult.OK) return;
-
         var root = folder.SelectedPath;
         var engine = Path.Combine(root, "Engine");
         var game = Path.Combine(root, "FortniteGame");
         var exe = Path.Combine(game, "Binaries", "Win64", "FortniteClient-Win64-Shipping.exe");
-
-        if (!Directory.Exists(engine) || !Directory.Exists(game))
-        {
-            MessageBox.Show(this, "That folder must contain both Engine and FortniteGame.", "Invalid build folder", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-        if (!File.Exists(exe))
-        {
-            MessageBox.Show(this, "The Windows shipping client was not found at:\n\n" + exe, "Client not found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        var name = new DirectoryInfo(root).Name;
-        var version = "";
-        ReadManifest(root, ref name, ref version);
-
+        if (!Directory.Exists(engine) || !Directory.Exists(game)) { MessageBox.Show(this, "That folder must contain both Engine and FortniteGame.", "Invalid build folder", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+        if (!File.Exists(exe)) { MessageBox.Show(this, "The Windows shipping client was not found at:\n\n" + exe, "Client not found", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+        var name = new DirectoryInfo(root).Name; var version = ""; ReadManifest(root, ref name, ref version);
         using var prompt = new ImportDialog(name, version, root);
         if (prompt.ShowDialog(this) != DialogResult.OK) return;
-
         var build = new BuildEntry { Id = Guid.NewGuid().ToString("N"), Name = prompt.BuildName, Version = prompt.BuildVersion, Root = root, Exe = exe };
         state.Builds.RemoveAll(x => string.Equals(x.Root, root, StringComparison.OrdinalIgnoreCase));
-        state.Builds.Insert(0, build);
-        state.SelectedId = build.Id;
-        SaveState();
-        RenderCards();
+        state.Builds.Insert(0, build); state.SelectedId = build.Id; SaveState(); ShowHome();
     }
 
-    private static void ReadManifest(string root, ref string name, ref string version)
+    static void ReadManifest(string root, ref string name, ref string version)
     {
         foreach (var file in new[] { "throwback-manifest.json", "manifest.json" })
         {
-            var path = Path.Combine(root, file);
-            if (!File.Exists(path)) continue;
-            try
-            {
-                using var doc = JsonDocument.Parse(File.ReadAllText(path));
-                name = FindString(doc.RootElement, ["name", "displayName", "seasonName"]) ?? name;
-                version = FindString(doc.RootElement, ["version", "buildVersion", "gameVersion"]) ?? version;
-            }
-            catch { }
+            var path = Path.Combine(root, file); if (!File.Exists(path)) continue;
+            try { using var doc = JsonDocument.Parse(File.ReadAllText(path)); name = Find(doc.RootElement, ["name", "displayName", "seasonName"]) ?? name; version = Find(doc.RootElement, ["version", "buildVersion", "gameVersion"]) ?? version; } catch { }
             break;
         }
     }
 
-    private static string? FindString(JsonElement value, string[] names)
+    static string? Find(JsonElement value, string[] names)
     {
-        if (value.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var p in value.EnumerateObject())
-            {
-                if (names.Any(n => string.Equals(n, p.Name, StringComparison.OrdinalIgnoreCase)) && p.Value.ValueKind is JsonValueKind.String or JsonValueKind.Number)
-                    return p.Value.ToString();
-                var nested = FindString(p.Value, names);
-                if (!string.IsNullOrWhiteSpace(nested)) return nested;
-            }
-        }
-        else if (value.ValueKind == JsonValueKind.Array)
-            foreach (var item in value.EnumerateArray())
-            {
-                var nested = FindString(item, names);
-                if (!string.IsNullOrWhiteSpace(nested)) return nested;
-            }
+        if (value.ValueKind == JsonValueKind.Object) foreach (var p in value.EnumerateObject()) { if (names.Any(n => string.Equals(n, p.Name, StringComparison.OrdinalIgnoreCase)) && p.Value.ValueKind is JsonValueKind.String or JsonValueKind.Number) return p.Value.ToString(); var nested = Find(p.Value, names); if (!string.IsNullOrWhiteSpace(nested)) return nested; }
+        else if (value.ValueKind == JsonValueKind.Array) foreach (var item in value.EnumerateArray()) { var nested = Find(item, names); if (!string.IsNullOrWhiteSpace(nested)) return nested; }
         return null;
     }
 
-    private void RenderCards()
+    void PlayClick(object? sender, EventArgs e) => LaunchSelected();
+    void LaunchSelected()
     {
-        cards.SuspendLayout();
-        cards.Controls.Clear();
-        foreach (var b in state.Builds)
-        {
-            var card = new Panel { Width = 278, Height = 145, Margin = new Padding(0, 0, 12, 12), BackColor = b.Id == state.SelectedId ? Color.FromArgb(46, 24, 72) : Panel, Cursor = Cursors.Hand };
-            card.Paint += (_, e) => { using var pen = new Pen(b.Id == state.SelectedId ? Purple : Color.FromArgb(57, 38, 86), b.Id == state.SelectedId ? 2 : 1); e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1); };
-            var badge = new Label { Text = "●  LOCAL BUILD", ForeColor = Color.FromArgb(90, 230, 165), BackColor = Color.FromArgb(17, 45, 35), AutoSize = true, Location = new Point(15, 15), Padding = new Padding(6, 4, 6, 4), Font = new Font("Segoe UI", 8, FontStyle.Bold) };
-            var name = new Label { Text = b.Name, ForeColor = Color.White, AutoEllipsis = true, Width = 245, Height = 28, Location = new Point(15, 58), Font = new Font("Segoe UI", 14, FontStyle.Bold) };
-            var ver = new Label { Text = b.Version, ForeColor = Color.FromArgb(160, 145, 180), AutoSize = true, Location = new Point(16, 88) };
-            var remove = MakeButton("REMOVE", false);
-            remove.Size = new Size(77, 28);
-            remove.Location = new Point(185, 107);
-            remove.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold);
-            remove.Click += (_, _) => RemoveBuild(b);
-            void choose(object? _, EventArgs __) { state.SelectedId = b.Id; SaveState(); RenderCards(); }
-            card.Click += choose; badge.Click += choose; name.Click += choose; ver.Click += choose;
-            card.Controls.AddRange([badge, name, ver, remove]);
-            cards.Controls.Add(card);
-        }
-        if (state.Builds.Count == 0)
-            cards.Controls.Add(new Label { Text = "No builds imported.\n\nSelect the parent folder containing Engine and FortniteGame.", ForeColor = Color.FromArgb(155, 140, 175), BorderStyle = BorderStyle.FixedSingle, TextAlign = ContentAlignment.MiddleCenter, Width = 600, Height = 110, Margin = new Padding(0, 3, 0, 0) });
-
-        count.Text = state.Builds.Count + (state.Builds.Count == 1 ? " build" : " builds");
-        var selected = state.Builds.FirstOrDefault(x => x.Id == state.SelectedId);
-        play.Enabled = selected is not null;
-        play.Text = selected is null ? "▶  SELECT A BUILD" : "▶  PLAY " + selected.Name.ToUpperInvariant();
-        cards.ResumeLayout();
+        var b = state.Builds.FirstOrDefault(x => x.Id == state.SelectedId); if (b is null) return;
+        if (!File.Exists(b.Exe)) { MessageBox.Show(this, "The executable is missing. Re-import the build if its folder moved.", "Client not found", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+        if (MessageBox.Show(this, $"Launch this local client?\n\n{b.Name} ({b.Version})\n{b.Exe}", "Confirm launch", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+        try { Process.Start(new ProcessStartInfo { FileName = b.Exe, WorkingDirectory = Path.GetDirectoryName(b.Exe)!, UseShellExecute = true }); }
+        catch (Exception ex) { MessageBox.Show(this, "Launch failed:\n" + ex.Message, "Launch failed", MessageBoxButtons.OK, MessageBoxIcon.Error); }
     }
 
-    private void RemoveBuild(BuildEntry build)
+    void RemoveBuild(BuildEntry b)
     {
         if (MessageBox.Show(this, "Remove this launcher entry? No game files will be deleted.", "Remove build", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
-        state.Builds.Remove(build);
-        if (state.SelectedId == build.Id) state.SelectedId = "";
-        SaveState();
-        RenderCards();
+        state.Builds.Remove(b); if (state.SelectedId == b.Id) state.SelectedId = ""; SaveState(); RenderLibrary();
     }
 
-    private void LaunchSelected()
-    {
-        var b = state.Builds.FirstOrDefault(x => x.Id == state.SelectedId);
-        if (b is null) return;
-        if (!File.Exists(b.Exe))
-        {
-            MessageBox.Show(this, "The executable is missing. Re-import the build if its folder was moved.", "Client not found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-        var result = MessageBox.Show(this, $"Launch this local client?\n\n{b.Name} ({b.Version})\n{b.Exe}", "Confirm launch", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-        if (result != DialogResult.Yes) return;
-        try
-        {
-            Process.Start(new ProcessStartInfo { FileName = b.Exe, WorkingDirectory = Path.GetDirectoryName(b.Exe)!, UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, "Launch failed:\n" + ex.Message, "Launch failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-    }
-
-    private void LoadState()
-    {
-        try { if (File.Exists(dataFile)) state = JsonSerializer.Deserialize<LibraryState>(File.ReadAllText(dataFile)) ?? new(); }
-        catch { state = new(); }
-    }
-
-    private void SaveState()
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(dataFile)!);
-        File.WriteAllText(dataFile, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));
-    }
+    void ComingSoon() => MessageBox.Show(this, "This section is ready for a future update.", "Project Rewind", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    Button MakeButton(string text, bool primary) { var b = new Button { Text = text }; StyleButton(b, primary); return b; }
+    void StyleButton(Button b, bool primary) { b.FlatStyle = FlatStyle.Flat; b.Cursor = Cursors.Hand; b.ForeColor = Color.White; b.BackColor = primary ? Color.FromArgb(10, 132, 236) : Color.FromArgb(24, 34, 54); b.Font = new Font("Segoe UI", 9, FontStyle.Bold); b.FlatAppearance.BorderColor = primary ? Cyan : Color.FromArgb(61, 73, 94); }
+    void LoadState() { try { if (File.Exists(dataFile)) state = JsonSerializer.Deserialize<LibraryState>(File.ReadAllText(dataFile)) ?? new(); } catch { state = new(); } }
+    void SaveState() { Directory.CreateDirectory(Path.GetDirectoryName(dataFile)!); File.WriteAllText(dataFile, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true })); }
 }
 
-public sealed class GradientPanel : Panel
+public sealed class HeroPanel : Panel
 {
-    public Color Start { get; set; }
-    public Color End { get; set; }
+    readonly Image? image;
+    public HeroPanel(Image? image) { this.image = image; DoubleBuffered = true; BackColor = Color.FromArgb(9, 22, 38); }
     protected override void OnPaintBackground(PaintEventArgs e)
     {
-        using var brush = new LinearGradientBrush(ClientRectangle, Start, End, 15f);
-        e.Graphics.FillRectangle(brush, ClientRectangle);
+        e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
+        if (image is not null) e.Graphics.DrawImage(image, ClientRectangle);
+        using var shade = new LinearGradientBrush(ClientRectangle, Color.FromArgb(235, 4, 14, 27), Color.FromArgb(50, 4, 14, 27), LinearGradientMode.Horizontal);
+        e.Graphics.FillRectangle(shade, ClientRectangle);
+        using var pen = new Pen(Color.FromArgb(46, 88, 123)); e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
     }
 }
 
 public sealed class ImportDialog : Form
 {
-    private readonly TextBox name = new();
-    private readonly TextBox version = new();
+    readonly TextBox name = new(), version = new();
     public string BuildName => name.Text.Trim();
     public string BuildVersion => version.Text.Trim();
-
     public ImportDialog(string initialName, string initialVersion, string root)
     {
-        Text = "Import Build";
-        Size = new Size(520, 330);
-        StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        BackColor = Color.FromArgb(18, 11, 33);
-        ForeColor = Color.White;
-        Font = new Font("Segoe UI", 10);
+        Text = "Import Build"; Size = new Size(520, 330); StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false; BackColor = Color.FromArgb(8, 20, 35); ForeColor = Color.White; Font = new Font("Segoe UI", 10);
         Controls.Add(new Label { Text = "Build folder", Location = new Point(24, 22), AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Bold) });
-        Controls.Add(new Label { Text = root + "\n✓ Windows client found", Location = new Point(24, 46), Size = new Size(450, 45), ForeColor = Color.FromArgb(180, 165, 200) });
-        Controls.Add(new Label { Text = "Build name", Location = new Point(24, 100), AutoSize = true });
-        name.SetBounds(24, 125, 450, 31); name.Text = initialName; name.BackColor = Color.FromArgb(9, 5, 17); name.ForeColor = Color.White; name.BorderStyle = BorderStyle.FixedSingle;
-        Controls.Add(name);
-        Controls.Add(new Label { Text = "Version", Location = new Point(24, 170), AutoSize = true });
-        version.SetBounds(24, 195, 450, 31); version.Text = initialVersion; version.BackColor = Color.FromArgb(9, 5, 17); version.ForeColor = Color.White; version.BorderStyle = BorderStyle.FixedSingle;
-        Controls.Add(version);
-        var cancel = new Button { Text = "CANCEL", DialogResult = DialogResult.Cancel, Location = new Point(274, 245), Size = new Size(95, 38), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, BackColor = Color.FromArgb(29, 18, 48) };
-        var save = new Button { Text = "IMPORT", Location = new Point(379, 245), Size = new Size(95, 38), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, BackColor = Color.FromArgb(124, 58, 237) };
+        Controls.Add(new Label { Text = root + "\n✓ Windows client found", Location = new Point(24, 46), Size = new Size(450, 45), ForeColor = Color.FromArgb(175, 195, 216) });
+        Controls.Add(new Label { Text = "Build name", Location = new Point(24, 100), AutoSize = true }); name.SetBounds(24, 125, 450, 31); name.Text = initialName; name.BackColor = Color.FromArgb(4, 12, 23); name.ForeColor = Color.White; Controls.Add(name);
+        Controls.Add(new Label { Text = "Version", Location = new Point(24, 170), AutoSize = true }); version.SetBounds(24, 195, 450, 31); version.Text = initialVersion; version.BackColor = Color.FromArgb(4, 12, 23); version.ForeColor = Color.White; Controls.Add(version);
+        var cancel = new Button { Text = "CANCEL", DialogResult = DialogResult.Cancel, Location = new Point(274, 245), Size = new Size(95, 38), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, BackColor = Color.FromArgb(24, 34, 54) };
+        var save = new Button { Text = "IMPORT", Location = new Point(379, 245), Size = new Size(95, 38), FlatStyle = FlatStyle.Flat, ForeColor = Color.White, BackColor = Color.FromArgb(10, 132, 236) };
         save.Click += (_, _) => { if (BuildName.Length == 0 || BuildVersion.Length == 0) MessageBox.Show(this, "Enter a name and version."); else DialogResult = DialogResult.OK; };
         Controls.Add(cancel); Controls.Add(save); AcceptButton = save; CancelButton = cancel;
     }
 }
 
-public sealed class LibraryState
-{
-    public string SelectedId { get; set; } = "";
-    public List<BuildEntry> Builds { get; set; } = [];
-}
-
-public sealed class BuildEntry
-{
-    public string Id { get; set; } = "";
-    public string Name { get; set; } = "";
-    public string Version { get; set; } = "";
-    public string Root { get; set; } = "";
-    public string Exe { get; set; } = "";
-}
+public sealed class LibraryState { public string SelectedId { get; set; } = ""; public List<BuildEntry> Builds { get; set; } = []; }
+public sealed class BuildEntry { public string Id { get; set; } = ""; public string Name { get; set; } = ""; public string Version { get; set; } = ""; public string Root { get; set; } = ""; public string Exe { get; set; } = ""; }
