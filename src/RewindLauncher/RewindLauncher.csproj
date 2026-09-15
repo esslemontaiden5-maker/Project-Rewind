@@ -5,14 +5,16 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>RewindLauncher</AssemblyName>
+    <AssemblyName>ThrowbackLauncher</AssemblyName>
     <RootNamespace>RewindLauncher</RootNamespace>
+    <ApplicationIcon>Assets\throwback.ico</ApplicationIcon>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Assets\hero.png" LogicalName="RewindLauncher.hero.png" />
+    <EmbeddedResource Include="Assets\hero.png" LogicalName="ThrowbackLauncher.hero.png" />
+    <EmbeddedResource Include="Assets\throwback-logo.png" LogicalName="ThrowbackLauncher.logo.png" />
   </ItemGroup>
 </Project>
