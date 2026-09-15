@@ -1,14 +1,14 @@
-# Project Rewind
+# Throwback Launcher
 
-A Windows build-library launcher for locally owned Fortnite installations.
+A polished Windows build-library launcher for locally owned Fortnite installations.
 
 ## Download the Windows launcher
 
 1. Open the repository's **Actions** tab.
 2. Select the newest successful **Build Windows Launcher** run.
-3. Download the `RewindLauncher-Windows-x64` artifact.
-4. Extract `RewindLauncher-Windows-x64.zip`.
-5. Run `RewindLauncher.exe`.
+3. Download the `ThrowbackLauncher-Windows-x64` artifact.
+4. Extract `ThrowbackLauncher-Windows-x64.zip`.
+5. Run `ThrowbackLauncher.exe`.
 
 The app is currently unsigned, so Windows SmartScreen may show a warning.
 
@@ -43,4 +43,4 @@ dotnet publish src/RewindLauncher/RewindLauncher.csproj -c Release -r win-x64 --
 
 This project does not download game files, bypass authentication or anti-cheat, or provide server emulation. Archived game clients generally cannot connect to current official servers.
 
-Project Rewind is an independent fan-made launcher and is not affiliated with, endorsed by, or sponsored by Epic Games. Fortnite is a trademark of Epic Games, Inc.
+Throwback Launcher is an independent fan-made launcher and is not affiliated with, endorsed by, or sponsored by Epic Games. Fortnite is a trademark of Epic Games, Inc.
