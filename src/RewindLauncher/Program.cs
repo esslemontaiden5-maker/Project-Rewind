@@ -58,10 +58,10 @@ public sealed class MainForm : Form
     {
         var side = new Panel { Dock = DockStyle.Left, Width = 252, BackColor = Side };
         var mark = new PictureBox { Image = logoImage, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Color.Transparent, Size = new Size(50, 50), Location = new Point(17, 49) };
-        var brand = new Label { Text = "REWIND\nLAUNCHER", Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = Color.White, AutoSize = true, Location = new Point(78, 56) };
+        var brand = new Label { Text = "THROWBACK\nLAUNCHER", Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = Color.White, AutoSize = true, Location = new Point(78, 56) };
         side.Controls.Add(mark); side.Controls.Add(brand);
 
-        var nav = new[] { ("⌂", "Home", (Action)ShowHome), ("▦", "Library", (Action)ShowLibrary), ("♕", "Leaderboard", (Action)ComingSoon), ("⚔", "Tournaments", (Action)ComingSoon), ("▣", "Shop", (Action)ComingSoon), ("↧", "Updates", (Action)ComingSoon), ("⚙", "Settings", (Action)ComingSoon) };
+        var nav = new[] { ("⌂", "Home", (Action)ShowHome), ("▦", "Library", (Action)ShowLibrary), ("♕", "Leaderboard", (Action)ComingSoon), ("⚔", "Tournaments", (Action)ComingSoon), ("▣", "Shop", (Action)ComingSoon), ("⌁", "Appeals", (Action)ComingSoon), ("↧", "Updates", (Action)ComingSoon), ("⚙", "Settings", (Action)ComingSoon) };
         var y = 132;
         foreach (var (icon, text, action) in nav)
         {
