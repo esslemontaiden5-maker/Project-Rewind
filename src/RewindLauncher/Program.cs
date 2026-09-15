@@ -26,7 +26,8 @@ public sealed class MainForm : Form
     readonly Label status = new();
     readonly FlowLayoutPanel library = new();
     LibraryState state = new();
-    Image? heroImage;\n    Image? logoImage;
+    Image? heroImage;
+    Image? logoImage;
 
     public MainForm()
     {
@@ -37,10 +38,14 @@ public sealed class MainForm : Form
         BackColor = Navy;
         ForeColor = Color.White;
         Font = new Font("Segoe UI", 9.5f);
-        try { using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("ThrowbackLauncher.hero.png"); if (s is not null) heroImage = Image.FromStream(s); } catch { }\n        try { using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("ThrowbackLauncher.logo.png"); if (s is not null) logoImage = Image.FromStream(s); } catch { }
+        try { using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("ThrowbackLauncher.hero.png"); if (s is not null) heroImage = Image.FromStream(s); } catch { }
+        try { using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("ThrowbackLauncher.logo.png"); if (s is not null) logoImage = Image.FromStream(s); } catch { }
         LoadState();
         BuildShell();
         ShowHome();
+        var monitor = new System.Windows.Forms.Timer { Interval = 1500 };
+        monitor.Tick += (_, _) => UpdateClientStatus();
+        monitor.Start();
     }
 
     void BuildShell()
@@ -224,7 +229,16 @@ public sealed class MainForm : Form
         state.Builds.Remove(b); if (state.SelectedId == b.Id) state.SelectedId = ""; SaveState(); RenderLibrary();
     }
 
-    void UpdateClientStatus()\n    {\n        var b = state.Builds.FirstOrDefault(x => x.Id == state.SelectedId);\n        var running = false;\n        try { if (b is not null) running = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(b.Exe)).Length > 0; } catch { }\n        status.Text = running ? "●  IN GAME" : "●  OFFLINE";\n        status.ForeColor = running ? Color.FromArgb(68, 229, 156) : Color.FromArgb(255, 83, 101);\n    }\n\n    void ComingSoon() => MessageBox.Show(this, "This section is ready for a future update.", "Throwback Launcher", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    void UpdateClientStatus()
+    {
+        var b = state.Builds.FirstOrDefault(x => x.Id == state.SelectedId);
+        var running = false;
+        try { if (b is not null) running = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(b.Exe)).Length > 0; } catch { }
+        status.Text = running ? "●  IN GAME" : "●  OFFLINE";
+        status.ForeColor = running ? Color.FromArgb(68, 229, 156) : Color.FromArgb(255, 83, 101);
+    }
+
+    void ComingSoon() => MessageBox.Show(this, "This section is ready for a future update.", "Throwback Launcher", MessageBoxButtons.OK, MessageBoxIcon.Information);
     Button MakeButton(string text, bool primary) { var b = new Button { Text = text }; StyleButton(b, primary); return b; }
     void StyleButton(Button b, bool primary) { b.FlatStyle = FlatStyle.Flat; b.Cursor = Cursors.Hand; b.ForeColor = Color.White; b.BackColor = primary ? Color.FromArgb(10, 132, 236) : Color.FromArgb(24, 34, 54); b.Font = new Font("Segoe UI", 9, FontStyle.Bold); b.FlatAppearance.BorderColor = primary ? Cyan : Color.FromArgb(61, 73, 94); }
     void LoadState() { try { if (File.Exists(dataFile)) state = JsonSerializer.Deserialize<LibraryState>(File.ReadAllText(dataFile)) ?? new(); } catch { state = new(); } }
