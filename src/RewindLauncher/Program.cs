@@ -18,7 +18,7 @@ public sealed class MainForm : Form
     static readonly Color Card = Color.FromArgb(10, 24, 40);
     static readonly Color Cyan = Color.FromArgb(21, 190, 255);
     static readonly Color Muted = Color.FromArgb(146, 165, 190);
-    readonly string dataFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RewindLauncher", "library.json");
+    readonly string dataFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ThrowbackLauncher", "library.json");
     readonly Panel page = new() { Dock = DockStyle.Fill, BackColor = Navy };
     readonly Button play = new();
     readonly Label buildName = new();
@@ -26,18 +26,18 @@ public sealed class MainForm : Form
     readonly Label status = new();
     readonly FlowLayoutPanel library = new();
     LibraryState state = new();
-    Image? heroImage;
+    Image? heroImage;\n    Image? logoImage;
 
     public MainForm()
     {
-        Text = "Project Rewind";
+        Text = "Throwback Launcher";
         Size = new Size(1260, 760);
         MinimumSize = new Size(1040, 680);
         StartPosition = FormStartPosition.CenterScreen;
         BackColor = Navy;
         ForeColor = Color.White;
         Font = new Font("Segoe UI", 9.5f);
-        try { using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("RewindLauncher.hero.png"); if (s is not null) heroImage = Image.FromStream(s); } catch { }
+        try { using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("ThrowbackLauncher.hero.png"); if (s is not null) heroImage = Image.FromStream(s); } catch { }\n        try { using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("ThrowbackLauncher.logo.png"); if (s is not null) logoImage = Image.FromStream(s); } catch { }
         LoadState();
         BuildShell();
         ShowHome();
@@ -46,7 +46,7 @@ public sealed class MainForm : Form
     void BuildShell()
     {
         var side = new Panel { Dock = DockStyle.Left, Width = 252, BackColor = Side };
-        var mark = new Label { Text = "R", Font = new Font("Segoe UI", 22, FontStyle.Bold), ForeColor = Cyan, BackColor = Color.FromArgb(5, 15, 28), BorderStyle = BorderStyle.FixedSingle, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(46, 46), Location = new Point(19, 52) };
+        var mark = new PictureBox { Image = logoImage, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Color.Transparent, Size = new Size(50, 50), Location = new Point(17, 49) };
         var brand = new Label { Text = "REWIND\nLAUNCHER", Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = Color.White, AutoSize = true, Location = new Point(78, 56) };
         side.Controls.Add(mark); side.Controls.Add(brand);
 
@@ -107,7 +107,7 @@ public sealed class MainForm : Form
         var newsRow = new Panel { Dock = DockStyle.Top, Height = 235 };
         var newsImage = new PictureBox { Dock = DockStyle.Left, Width = 610, Image = heroImage, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Card };
         var newsCards = new Panel { Dock = DockStyle.Fill, Padding = new Padding(18, 0, 0, 0) };
-        var welcome = NewsCard("01", "WELCOME TO REWIND", "Your local build library is ready.", true);
+        var welcome = NewsCard("01", "WELCOME TO THROWBACK", "Your archive is ready. Pick a build and jump back in.", true);
         welcome.Dock = DockStyle.Top; welcome.Height = 105;
         var update = NewsCard("02", "BUILD IMPORTS", "Select Engine + FortniteGame to begin.", false);
         update.Dock = DockStyle.Bottom; update.Height = 105;
@@ -224,7 +224,7 @@ public sealed class MainForm : Form
         state.Builds.Remove(b); if (state.SelectedId == b.Id) state.SelectedId = ""; SaveState(); RenderLibrary();
     }
 
-    void ComingSoon() => MessageBox.Show(this, "This section is ready for a future update.", "Project Rewind", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    void UpdateClientStatus()\n    {\n        var b = state.Builds.FirstOrDefault(x => x.Id == state.SelectedId);\n        var running = false;\n        try { if (b is not null) running = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(b.Exe)).Length > 0; } catch { }\n        status.Text = running ? "●  IN GAME" : "●  OFFLINE";\n        status.ForeColor = running ? Color.FromArgb(68, 229, 156) : Color.FromArgb(255, 83, 101);\n    }\n\n    void ComingSoon() => MessageBox.Show(this, "This section is ready for a future update.", "Throwback Launcher", MessageBoxButtons.OK, MessageBoxIcon.Information);
     Button MakeButton(string text, bool primary) { var b = new Button { Text = text }; StyleButton(b, primary); return b; }
     void StyleButton(Button b, bool primary) { b.FlatStyle = FlatStyle.Flat; b.Cursor = Cursors.Hand; b.ForeColor = Color.White; b.BackColor = primary ? Color.FromArgb(10, 132, 236) : Color.FromArgb(24, 34, 54); b.Font = new Font("Segoe UI", 9, FontStyle.Bold); b.FlatAppearance.BorderColor = primary ? Cyan : Color.FromArgb(61, 73, 94); }
     void LoadState() { try { if (File.Exists(dataFile)) state = JsonSerializer.Deserialize<LibraryState>(File.ReadAllText(dataFile)) ?? new(); } catch { state = new(); } }
