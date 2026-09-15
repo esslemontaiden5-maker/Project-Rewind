@@ -12,4 +12,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\hero.png" LogicalName="RewindLauncher.hero.png" />
+  </ItemGroup>
 </Project>
